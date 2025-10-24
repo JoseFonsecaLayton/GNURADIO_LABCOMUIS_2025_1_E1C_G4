@@ -1,0 +1,40 @@
+import numpy as np
+from gnuradio import gr
+
+class blk(gr.sync_block):
+    """Cálculo de la potencia promedio en ventanas de N muestras"""
+
+    def __init__(self, vec_len=1024):
+        gr.sync_block.__init__(
+            self,
+            name='Potencia promedio',                # Nombre del bloque
+            in_sig=[np.complex64],                # Entrada: flujo complejo
+            out_sig=[np.float32]                     # Salida: flujo flotante
+        )
+        self.vec_len = int(vec_len)                  # Longitud de ventana
+        self.buffer = np.array([], dtype=np.complex64)
+
+    def work(self, input_items, output_items):
+        in0 = input_items[0]
+        out0 = output_items[0]
+        out_index = 0
+
+        # Agregar las nuevas muestras al buffer
+        self.buffer = np.concatenate((self.buffer, in0))
+
+        # Mientras haya suficientes muestras para una ventana
+        while len(self.buffer) >= self.vec_len:
+            ventana = self.buffer[:self.vec_len]
+            self.buffer = self.buffer[self.vec_len:]  # Eliminar las usadas
+
+            # Calcular potencia promedio: |x|^2 promedio
+            potencia = np.mean(np.abs(ventana) ** 2)
+            out0[out_index] = np.float32(potencia)
+            out_index += 1
+
+            # Detener si llenamos la salida
+            if out_index >= len(out0):
+                break
+
+        return out_index
+
